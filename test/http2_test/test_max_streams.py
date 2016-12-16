@@ -27,53 +27,37 @@
 # (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-import os
-import pkg_resources
-import sys
+import hyperframe.frame
+import logging
 
-import setuptools
+import http2_base_server
 
-from grpc_tools import protoc
+class TestcaseSettingsMaxStreams(object):
+  """
+    This test sets MAX_CONCURRENT_STREAMS to 1 and asserts that at any point
+    only 1 stream is active.
+  """
+  def __init__(self):
+    self._base_server = http2_base_server.H2ProtocolBaseServer()
+    self._base_server._handlers['DataReceived'] = self.on_data_received
+    self._base_server._handlers['ConnectionMade'] = self.on_connection_made
 
+  def get_base_server(self):
+    return self._base_server
 
-def build_package_protos(package_root):
-  proto_files = []
-  inclusion_root = os.path.abspath(package_root)
-  for root, _, files in os.walk(inclusion_root):
-    for filename in files:
-      if filename.endswith('.proto'):
-        proto_files.append(os.path.abspath(os.path.join(root, filename)))
+  def on_connection_made(self):
+    logging.info('Connection Made')
+    self._base_server._conn.initiate_connection()
+    self._base_server._conn.update_settings(
+                  {hyperframe.frame.SettingsFrame.MAX_CONCURRENT_STREAMS: 1})
+    self._base_server.transport.setTcpNoDelay(True)
+    self._base_server.transport.write(self._base_server._conn.data_to_send())
 
-  well_known_protos_include = pkg_resources.resource_filename(
-      'grpc_tools', '_proto')
-
-  for proto_file in proto_files:
-    command = [
-        'grpc_tools.protoc',
-        '--proto_path={}'.format(inclusion_root),
-        '--proto_path={}'.format(well_known_protos_include),
-        '--python_out={}'.format(inclusion_root),
-        '--grpc_python_out={}'.format(inclusion_root),
-    ] + [proto_file]
-    if protoc.main(command) != 0:
-      sys.stderr.write('warning: {} failed'.format(command))
-
-
-class BuildPackageProtos(setuptools.Command):
-  """Command to generate project *_pb2.py modules from proto files."""
-
-  description = 'build grpc protobuf modules'
-  user_options = []
-
-  def initialize_options(self):
-    pass
-
-  def finalize_options(self):
-    pass
-
-  def run(self):
-    # due to limitations of the proto generator, we require that only *one*
-    # directory is provided as an 'include' directory. We assume it's the '' key
-    # to `self.distribution.package_dir` (and get a key error if it's not
-    # there).
-    build_package_protos(self.distribution.package_dir[''])
+  def on_data_received(self, event):
+    self._base_server.on_data_received_default(event)
+    sr = self._base_server.parse_received_data(event.stream_id)
+    if sr:
+      logging.info('Creating response of size = %s' % sr.response_size)
+      response_data = self._base_server.default_response_data(sr.response_size)
+      self._base_server.setup_send(response_data, event.stream_id)
+    # TODO (makdharma): Add assertion to check number of live streams

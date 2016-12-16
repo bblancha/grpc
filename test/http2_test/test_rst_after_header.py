@@ -27,53 +27,22 @@
 # (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-import os
-import pkg_resources
-import sys
+import http2_base_server
 
-import setuptools
+class TestcaseRstStreamAfterHeader(object):
+  """
+    In response to an incoming request, this test sends headers, followed by
+    a reset stream frame. Client asserts that the RPC failed.
+  """
+  def __init__(self):
+    self._base_server = http2_base_server.H2ProtocolBaseServer()
+    self._base_server._handlers['RequestReceived'] = self.on_request_received
 
-from grpc_tools import protoc
+  def get_base_server(self):
+    return self._base_server
 
-
-def build_package_protos(package_root):
-  proto_files = []
-  inclusion_root = os.path.abspath(package_root)
-  for root, _, files in os.walk(inclusion_root):
-    for filename in files:
-      if filename.endswith('.proto'):
-        proto_files.append(os.path.abspath(os.path.join(root, filename)))
-
-  well_known_protos_include = pkg_resources.resource_filename(
-      'grpc_tools', '_proto')
-
-  for proto_file in proto_files:
-    command = [
-        'grpc_tools.protoc',
-        '--proto_path={}'.format(inclusion_root),
-        '--proto_path={}'.format(well_known_protos_include),
-        '--python_out={}'.format(inclusion_root),
-        '--grpc_python_out={}'.format(inclusion_root),
-    ] + [proto_file]
-    if protoc.main(command) != 0:
-      sys.stderr.write('warning: {} failed'.format(command))
-
-
-class BuildPackageProtos(setuptools.Command):
-  """Command to generate project *_pb2.py modules from proto files."""
-
-  description = 'build grpc protobuf modules'
-  user_options = []
-
-  def initialize_options(self):
-    pass
-
-  def finalize_options(self):
-    pass
-
-  def run(self):
-    # due to limitations of the proto generator, we require that only *one*
-    # directory is provided as an 'include' directory. We assume it's the '' key
-    # to `self.distribution.package_dir` (and get a key error if it's not
-    # there).
-    build_package_protos(self.distribution.package_dir[''])
+  def on_request_received(self, event):
+    # send initial headers
+    self._base_server.on_request_received_default(event)
+    # send reset stream
+    self._base_server.send_reset_stream()
