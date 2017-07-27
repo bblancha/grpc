@@ -79,11 +79,10 @@ void UpdateActions(
 
 std::shared_ptr<Channel> CreateChannelForTestCase(
     const grpc::string& test_case) {
-  GPR_ASSERT(FLAGS_server_port);
+//  GPR_ASSERT(FLAGS_server_port);
   const int host_port_buf_size = 1024;
   char host_port[host_port_buf_size];
-  snprintf(host_port, host_port_buf_size, "%s:%d", FLAGS_server_host.c_str(),
-           FLAGS_server_port);
+  snprintf(host_port, host_port_buf_size, "%s", FLAGS_server_host.c_str());
 
   std::shared_ptr<CallCredentials> creds;
   if (test_case == "compute_engine_creds") {

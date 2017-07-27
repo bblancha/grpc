@@ -317,9 +317,10 @@ class TestServiceImpl : public TestService::Service {
 
 void grpc::testing::interop::RunServer(
     std::shared_ptr<ServerCredentials> creds) {
-  GPR_ASSERT(FLAGS_port != 0);
+// GPR_ASSERT(FLAGS_port != 0);
   std::ostringstream server_address;
-  server_address << "0.0.0.0:" << FLAGS_port;
+  server_address << "unix:///tmp/interop_socket";
+   //  << FLAGS_port;
   TestServiceImpl service;
 
   SimpleRequest request;

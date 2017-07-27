@@ -384,8 +384,7 @@ endif
 # Then clone a fresh grpc for the actual cross-compiled build
 # Set the environment variable GRPC_CROSS_COMPILE to true
 # Set CC, CXX, LD, LDXX, AR, and STRIP to the cross-compiling binaries
-# Also set PROTOBUF_CONFIG_OPTS to indicate cross-compilation to protobuf (e.g.,
-#  PROTOBUF_CONFIG_OPTS="--host=arm-linux --with-protoc=/usr/local/bin/protoc" )
+# Also set PROTOBUF_CONFIG_OPTS to indicate cross-compilation to protobuf (e.g., #  PROTOBUF_CONFIG_OPTS="--host=arm-linux --with-protoc=/usr/local/bin/protoc" )
 # Set HAS_PKG_CONFIG=false
 # To build tests, go to third_party/gflags and follow its ccmake instructions
 # Make sure that you enable building shared libraries and set your prefix to
